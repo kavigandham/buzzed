@@ -69,6 +69,9 @@ export default function MainScreen() {
       <SafeAreaView style={styles.fill} edges={['top', 'left', 'right']}>
         <ScrollView contentContainerStyle={styles.content}>
           <Text style={styles.title}>Buzzed.</Text>
+          {profile.name.trim().length > 0 && (
+            <Text style={styles.greeting}>Hey, {profile.name.trim()}</Text>
+          )}
 
           {/* Level chip */}
           <View style={styles.chipRow}>
@@ -178,7 +181,12 @@ const styles = StyleSheet.create({
     fontSize: 44,
     fontWeight: '800',
     marginTop: 8,
-    marginBottom: 16,
+    marginBottom: 8,
+  },
+  greeting: {
+    color: APP_COLORS.textSecondary,
+    fontSize: 16,
+    marginBottom: 14,
   },
   chipRow: {
     flexDirection: 'row',
