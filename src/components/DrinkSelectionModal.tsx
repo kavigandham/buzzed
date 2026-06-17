@@ -3,7 +3,7 @@
 // whole library/custom drinks. Tap logs default serving; long-press overrides
 // the serving oz; "Add Custom Drink" saves + logs a new drink. Closes on log.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -20,13 +20,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useDrink } from '../contexts/DrinkContext';
-import {
-  DRINK_LIBRARY,
-  getDrinkById,
-  getDrinksByCategory,
-  searchDrinks,
-} from '../data/drinkLibrary';
-import { DrinkCategory, LibraryDrink } from '../types';
+import { getDrinkById } from '../data/drinkLibrary';
+import { useDrinkSearch, CATEGORY_PILLS } from '../hooks/useDrinkSearch';
+import { LibraryDrink } from '../types';
 import { APP_COLORS, CATEGORY_COLORS } from '../constants/colors';
 
 interface Props {
@@ -34,27 +30,17 @@ interface Props {
   onClose: () => void;
 }
 
-type CategoryFilter = 'all' | DrinkCategory;
-
-const CATEGORY_PILLS: { label: string; value: CategoryFilter }[] = [
-  { label: 'All', value: 'all' },
-  { label: 'Beer', value: 'beer' },
-  { label: 'Wine', value: 'wine' },
-  { label: 'Cocktail', value: 'cocktail' },
-  { label: 'Spirit', value: 'spirit' },
-  { label: 'Shot', value: 'shot' },
-  { label: 'Seltzer', value: 'hard_seltzer' },
-  { label: 'Cider', value: 'cider' },
-  { label: 'Malt', value: 'malt_beverage' },
-  { label: 'Other', value: 'other' },
-];
-
 export default function DrinkSelectionModal({ visible, onClose }: Props) {
   const { profile, customDrinks, cabinet, logDrink, addCustomDrink } = useDrink();
 
-  const [searchInput, setSearchInput] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [category, setCategory] = useState<CategoryFilter>('all');
+  const {
+    searchInput,
+    setSearchInput,
+    category,
+    setCategory,
+    drinks,
+    reset: resetSearch,
+  } = useDrinkSearch(customDrinks);
 
   // Long-press serving override.
   const [servingTarget, setServingTarget] = useState<LibraryDrink | null>(null);
@@ -65,12 +51,6 @@ export default function DrinkSelectionModal({ visible, onClose }: Props) {
   const [customName, setCustomName] = useState('');
   const [customAbv, setCustomAbv] = useState('');
   const [customOz, setCustomOz] = useState('');
-
-  // Debounce the search input by 300ms.
-  useEffect(() => {
-    const handle = setTimeout(() => setDebouncedQuery(searchInput), 300);
-    return () => clearTimeout(handle);
-  }, [searchInput]);
 
   const resolve = (id: string | null): LibraryDrink | undefined =>
     id ? getDrinkById(id) ?? customDrinks.find((d) => d.id === id) : undefined;
@@ -85,29 +65,8 @@ export default function DrinkSelectionModal({ visible, onClose }: Props) {
     [cabinet]
   );
 
-  // Category filter + search combined with AND logic.
-  const drinks = useMemo(() => {
-    const q = debouncedQuery.trim().toLowerCase();
-    const base: LibraryDrink[] =
-      category === 'all'
-        ? [...DRINK_LIBRARY, ...customDrinks]
-        : [...getDrinksByCategory(category), ...customDrinks.filter((d) => d.category === category)];
-
-    if (!q) return base;
-
-    const matchedIds = new Set(searchDrinks(q).map((d) => d.id));
-    return base.filter((d) =>
-      getDrinkById(d.id)
-        ? matchedIds.has(d.id) // library item — use searchDrinks result
-        : d.name.toLowerCase().includes(q) ||
-          d.tags.some((t) => t.toLowerCase().includes(q)) // custom item
-    );
-  }, [debouncedQuery, category, customDrinks]);
-
   const resetAndClose = () => {
-    setSearchInput('');
-    setDebouncedQuery('');
-    setCategory('all');
+    resetSearch();
     setServingTarget(null);
     setServingValue('');
     setShowCustomForm(false);
