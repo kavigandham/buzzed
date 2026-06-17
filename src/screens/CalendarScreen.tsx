@@ -14,7 +14,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import ViewShot, { ViewShotRef } from 'react-native-view-shot';
+import ViewShot from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import {
   startOfMonth,
@@ -49,7 +49,7 @@ export default function CalendarScreen() {
   const [currentMonth, setCurrentMonth] = useState<Date>(() => startOfMonth(new Date()));
   const [showName, setShowName] = useState(false);
 
-  const viewShotRef = useRef<ViewShotRef>(null);
+  const viewShotRef = useRef<ViewShot>(null);
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
 
