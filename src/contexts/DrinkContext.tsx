@@ -158,7 +158,11 @@ export function DrinkProvider({ children }: { children: ReactNode }) {
     setLevelConfig(configForLevel(level));
     setConfidence(computeConfidence(drinks, active));
 
-    if (active === 0) {
+    // Keep ticking through the hysteresis fall-hold: only stop once everything
+    // has decayed AND the displayed level has actually settled to sober.
+    // Stopping the moment active hits 0 would freeze the chip one level up,
+    // because the 3-minute fall to 'sober' would never get committed.
+    if (active === 0 && level === 'sober') {
       stopTicker();
     }
   }, [stopTicker]);
