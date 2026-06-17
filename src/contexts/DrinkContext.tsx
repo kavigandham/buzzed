@@ -118,6 +118,9 @@ export function DrinkProvider({ children }: { children: ReactNode }) {
   const hysteresisRef = useRef(hysteresis);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const idCounter = useRef(0);
+  // Mirrors customDrinks so a just-added custom drink is resolvable inside the
+  // same event handler (state updates are async), e.g. add-then-log.
+  const customDrinksRef = useRef(customDrinks);
 
   useEffect(() => {
     loggedDrinksRef.current = loggedDrinks;
@@ -125,6 +128,9 @@ export function DrinkProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     hysteresisRef.current = hysteresis;
   }, [hysteresis]);
+  useEffect(() => {
+    customDrinksRef.current = customDrinks;
+  }, [customDrinks]);
 
   const stopTicker = useCallback(() => {
     if (intervalRef.current !== null) {
@@ -241,7 +247,7 @@ export function DrinkProvider({ children }: { children: ReactNode }) {
 
   const logDrink = useCallback(
     (drinkId: string, servingOz?: number, abv?: number) => {
-      const base = lookupDrink(drinkId, customDrinks);
+      const base = lookupDrink(drinkId, customDrinksRef.current);
       if (!base) {
         console.warn(`logDrink: unknown drinkId ${drinkId}`);
         return;
@@ -337,7 +343,7 @@ export function DrinkProvider({ children }: { children: ReactNode }) {
       StorageService.saveCabinet(nextCabinet);
       StorageService.saveCalendar(nextCalendar);
     },
-    [loggedDrinks, session, cabinet, calendarDays, customDrinks, nextId]
+    [loggedDrinks, session, cabinet, calendarDays, nextId]
   );
 
   const removeDrink = useCallback(
@@ -445,6 +451,7 @@ export function DrinkProvider({ children }: { children: ReactNode }) {
   const addCustomDrink = useCallback(
     (drink: LibraryDrink) => {
       const nextCustom = [...customDrinks, drink];
+      customDrinksRef.current = nextCustom; // available synchronously for logDrink
       setCustomDrinks(nextCustom);
       StorageService.saveCustomDrinks(nextCustom);
     },
