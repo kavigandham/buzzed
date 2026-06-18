@@ -10,6 +10,7 @@ import {
   CalendarDay,
   LibraryDrink,
   HysteresisState,
+  LegalAcceptance,
 } from '../types';
 
 const KEYS = {
@@ -19,6 +20,7 @@ const KEYS = {
   calendar: '@buzzed_calendar',
   customDrinks: '@buzzed_custom_drinks',
   hysteresis: '@buzzed_hysteresis',
+  legalAcceptance: '@buzzed_legal_acceptance',
 } as const;
 
 async function setItem<T>(key: string, value: T): Promise<void> {
@@ -98,6 +100,14 @@ export const StorageService = {
   },
   loadHysteresis(): Promise<HysteresisState | null> {
     return getObject<HysteresisState>(KEYS.hysteresis);
+  },
+
+  // Legal / age-gate acceptance (dated clickwrap record)
+  saveLegalAcceptance(a: LegalAcceptance): Promise<void> {
+    return setItem(KEYS.legalAcceptance, a);
+  },
+  loadLegalAcceptance(): Promise<LegalAcceptance | null> {
+    return getObject<LegalAcceptance>(KEYS.legalAcceptance);
   },
 
   // Remove every @buzzed_ key.

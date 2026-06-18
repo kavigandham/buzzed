@@ -21,10 +21,12 @@ import { getDrinkById } from '../data/drinkLibrary';
 import { LibraryDrink, UserProfile } from '../types';
 import { APP_COLORS, CATEGORY_COLORS } from '../constants/colors';
 import { RADII, SPACING, TYPE, withAlpha } from '../constants/theme';
+import { LegalDocKey, LEGAL_DOC_ORDER, LEGAL_DOCUMENTS } from '../constants/legal';
 import AnimatedGradientBackground from '../components/ui/AnimatedGradientBackground';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import GradientButton from '../components/ui/GradientButton';
 import PressableScale from '../components/ui/PressableScale';
+import LegalDocumentModal from '../components/legal/LegalDocumentModal';
 
 const APP_VERSION = 'Buzzed. v1.0.0';
 const DISCLAIMER = 'For entertainment only. Do not use to determine fitness to drive.';
@@ -35,6 +37,8 @@ export default function SettingsScreen() {
 
   // Which quick slot (0/1/2) the picker is currently editing.
   const [pickerSlot, setPickerSlot] = useState<number | null>(null);
+  // Which legal document modal is open (null = none).
+  const [legalDoc, setLegalDoc] = useState<LegalDocKey | null>(null);
 
   const resolve = (id: string | null): LibraryDrink | undefined =>
     id ? getDrinkById(id) ?? customDrinks.find((d) => d.id === id) : undefined;
@@ -137,12 +141,28 @@ export default function SettingsScreen() {
             style={styles.actionSpacing}
           />
 
+          {/* Legal */}
+          <Text style={styles.sectionLabel}>Legal</Text>
+          {LEGAL_DOC_ORDER.map((key) => (
+            <PressableScale key={key} onPress={() => setLegalDoc(key)} style={styles.slotWrap}>
+              <View style={styles.slotRow}>
+                <Text style={styles.legalLabel} numberOfLines={1}>
+                  {LEGAL_DOCUMENTS[key].shortTitle}
+                </Text>
+                <Text style={styles.slotChevron}>›</Text>
+              </View>
+            </PressableScale>
+          ))}
+
           {/* App info */}
           <View style={styles.info}>
             <Text style={styles.version}>{APP_VERSION}</Text>
             <Text style={styles.disclaimer}>{DISCLAIMER}</Text>
           </View>
         </ScrollView>
+
+        {/* Legal document viewer */}
+        <LegalDocumentModal docKey={legalDoc} onClose={() => setLegalDoc(null)} />
 
         {/* Quick slot picker */}
         <Modal visible={pickerSlot !== null} animationType="slide" onRequestClose={() => setPickerSlot(null)}>
@@ -218,6 +238,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   slotIndex: { color: APP_COLORS.textSecondary, fontSize: 14, width: 64 },
+  legalLabel: { color: APP_COLORS.text, fontSize: 16, fontWeight: '600', flex: 1 },
   slotValue: { color: APP_COLORS.text, fontSize: 16, fontWeight: '600', flex: 1 },
   slotValueEmpty: { color: APP_COLORS.textSecondary, fontWeight: '400' },
   slotChevron: { color: APP_COLORS.textSecondary, fontSize: 22, marginLeft: 8 },

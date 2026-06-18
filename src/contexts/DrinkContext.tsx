@@ -25,8 +25,10 @@ import {
   ImpairmentLevel,
   LevelConfig,
   LibraryDrink,
+  LegalAcceptance,
 } from '../types';
 import { LEVEL_CONFIGS } from '../constants/levels';
+import { LEGAL_VERSION } from '../constants/legal';
 import { DRINK_LIBRARY, getDrinkById } from '../data/drinkLibrary';
 import { calcStandardDrinks, calcActiveTotal, calcTimeToSober } from '../utils/drinkCalculator';
 import { getLevel, applyHysteresis } from '../utils/levelEngine';
@@ -48,6 +50,7 @@ interface DrinkContextValue {
   timeToSober: number;
   confidence: Confidence;
   isLoading: boolean;
+  hasAcceptedLegal: boolean;
   // Actions
   logDrink: (drinkId: string, servingOz?: number, abv?: number) => void;
   removeDrink: (loggedDrinkId: string) => void;
@@ -56,6 +59,7 @@ interface DrinkContextValue {
   updateProfile: (p: UserProfile) => void;
   toggleFavorite: (drinkId: string) => void;
   addCustomDrink: (drink: LibraryDrink) => void;
+  acceptLegal: () => void;
 }
 
 const DEFAULT_PROFILE: UserProfile = { name: '', quickSlots: [null, null, null] };
@@ -110,6 +114,9 @@ export function DrinkProvider({ children }: { children: ReactNode }) {
   const [timeToSober, setTimeToSober] = useState(0);
   const [confidence, setConfidence] = useState<Confidence>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // First-launch age-gate / legal acceptance. Defaults to false so the gate
+  // shows until a stored acceptance is loaded (or the user accepts).
+  const [hasAcceptedLegal, setHasAcceptedLegal] = useState(false);
   // Hysteresis lives in the context (not component-local UI state).
   const [hysteresis, setHysteresis] = useState<HysteresisState>(DEFAULT_HYSTERESIS);
 
@@ -212,6 +219,7 @@ export function DrinkProvider({ children }: { children: ReactNode }) {
         savedCalendar,
         savedCustom,
         savedHysteresis,
+        savedLegal,
       ] = await Promise.all([
         StorageService.loadProfile(),
         StorageService.loadSession(),
@@ -219,9 +227,11 @@ export function DrinkProvider({ children }: { children: ReactNode }) {
         StorageService.loadCalendar(),
         StorageService.loadCustomDrinks(),
         StorageService.loadHysteresis(),
+        StorageService.loadLegalAcceptance(),
       ]);
       if (!mounted) return;
 
+      if (savedLegal?.accepted) setHasAcceptedLegal(true);
       if (savedProfile) setProfile(savedProfile);
       if (savedCabinet) setCabinet(savedCabinet);
       if (savedCalendar) setCalendarDays(savedCalendar);
@@ -413,12 +423,25 @@ export function DrinkProvider({ children }: { children: ReactNode }) {
     setCurrentLevel('sober');
     setLevelConfig(SOBER_CONFIG);
     setConfidence(null);
+    // "Clear All Data" wipes every @buzzed_ key, including the stored consent —
+    // so the age gate re-appears and the user re-consents on next entry.
+    setHasAcceptedLegal(false);
     StorageService.clearAll();
   }, [stopTicker]);
 
   const updateProfile = useCallback((p: UserProfile) => {
     setProfile(p);
     StorageService.saveProfile(p);
+  }, []);
+
+  const acceptLegal = useCallback(() => {
+    const record: LegalAcceptance = {
+      accepted: true,
+      acceptedAt: Date.now(),
+      version: LEGAL_VERSION,
+    };
+    setHasAcceptedLegal(true);
+    StorageService.saveLegalAcceptance(record);
   }, []);
 
   const toggleFavorite = useCallback(
@@ -475,6 +498,7 @@ export function DrinkProvider({ children }: { children: ReactNode }) {
     timeToSober,
     confidence,
     isLoading,
+    hasAcceptedLegal,
     logDrink,
     removeDrink,
     restartSession,
@@ -482,6 +506,7 @@ export function DrinkProvider({ children }: { children: ReactNode }) {
     updateProfile,
     toggleFavorite,
     addCustomDrink,
+    acceptLegal,
   };
 
   return <DrinkContext.Provider value={value}>{children}</DrinkContext.Provider>;

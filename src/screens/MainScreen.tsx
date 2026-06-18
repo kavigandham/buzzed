@@ -20,14 +20,13 @@ import { calcRemaining } from '../utils/drinkCalculator';
 import { LibraryDrink, LoggedDrink } from '../types';
 import { APP_COLORS } from '../constants/colors';
 import { RADII, SPACING, TYPE, withAlpha } from '../constants/theme';
+import { DISCLAIMER_SHORT } from '../constants/legal';
 import DrinkSelectionModal from '../components/DrinkSelectionModal';
+import LegalDocumentModal from '../components/legal/LegalDocumentModal';
 import AnimatedGradientBackground from '../components/ui/AnimatedGradientBackground';
 import LevelMeter from '../components/ui/LevelMeter';
 import GradientButton from '../components/ui/GradientButton';
 import PressableScale from '../components/ui/PressableScale';
-
-const DISCLAIMER =
-  'For entertainment only. Do not use to determine fitness to drive.';
 
 function formatTimeToSober(seconds: number): string {
   if (seconds <= 0) return '0m';
@@ -49,6 +48,7 @@ export default function MainScreen() {
   } = useDrink();
 
   const [modalVisible, setModalVisible] = useState(false);
+  const [disclaimerOpen, setDisclaimerOpen] = useState(false);
 
   const resolveSlot = (id: string | null): LibraryDrink | undefined =>
     id ? getDrinkById(id) ?? customDrinks.find((d) => d.id === id) : undefined;
@@ -138,12 +138,20 @@ export default function MainScreen() {
             style={styles.restartButton}
           />
 
-          {/* Disclaimer */}
-          <Text style={styles.disclaimer}>{DISCLAIMER}</Text>
+          {/* Disclaimer — tap to read the full Alcohol & Health Disclaimer */}
+          <Text style={styles.disclaimer} onPress={() => setDisclaimerOpen(true)}>
+            {DISCLAIMER_SHORT}
+            {'\n'}
+            <Text style={styles.disclaimerLink}>Read the full disclaimer</Text>
+          </Text>
         </ScrollView>
       </SafeAreaView>
 
       <DrinkSelectionModal visible={modalVisible} onClose={() => setModalVisible(false)} />
+      <LegalDocumentModal
+        docKey={disclaimerOpen ? 'disclaimer' : null}
+        onClose={() => setDisclaimerOpen(false)}
+      />
     </AnimatedGradientBackground>
   );
 }
@@ -311,5 +319,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: SPACING.xxl,
     lineHeight: 18,
+  },
+  disclaimerLink: {
+    color: APP_COLORS.accent,
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

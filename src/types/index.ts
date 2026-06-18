@@ -84,3 +84,11 @@ export interface LevelConfig {
   color: string;
   label: ImpairmentLevel;
 }
+
+// Dated clickwrap record of the first-launch age-gate / legal acceptance.
+// `version` mirrors LEGAL_VERSION so consent stays tied to the text accepted.
+export interface LegalAcceptance {
+  accepted: boolean;
+  acceptedAt: number;
+  version: string;
+}
