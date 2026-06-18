@@ -7,9 +7,14 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kavigandham.buzzed",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
+      "package": "com.kavigandham.buzzed",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -31,6 +36,12 @@
           "backgroundColor": "#0F1115"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "c4f9b56f-7ef9-4611-bb8a-478695c8eb63"
+      }
+    },
+    "owner": "kavigandham"
   }
 }
