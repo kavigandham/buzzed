@@ -2,6 +2,9 @@
 // Data comes from context.calendarDays. Each day cell is tinted by that day's
 // max impairment level. A ViewShot wraps only the shareable portion (branded
 // header + grid + legend); the share button / controls sit outside it.
+//
+// IMPORTANT: the ViewShot subtree stays free of BlurView / animated layers so the
+// captured share image renders cleanly — it uses solid warm surfaces only.
 
 import { useMemo, useRef, useState } from 'react';
 import {
@@ -30,8 +33,10 @@ import {
 import { useDrink } from '../contexts/DrinkContext';
 import { CalendarDay, ImpairmentLevel } from '../types';
 import { LEVEL_CONFIGS } from '../constants/levels';
-import { LEVEL_COLORS } from '../constants/colors';
-import { APP_COLORS } from '../constants/colors';
+import { LEVEL_COLORS, APP_COLORS } from '../constants/colors';
+import { RADII, SPACING, TYPE, withAlpha } from '../constants/theme';
+import AnimatedGradientBackground from '../components/ui/AnimatedGradientBackground';
+import PressableScale from '../components/ui/PressableScale';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -111,152 +116,162 @@ export default function CalendarScreen() {
   const monthLabel = format(currentMonth, 'MMMM yyyy');
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <ScrollView contentContainerStyle={styles.content}>
-        {/* Top bar (outside the shareable capture) */}
-        <View style={styles.topBar}>
-          <Text style={styles.screenTitle}>Calendar</Text>
-          <TouchableOpacity style={styles.shareButton} onPress={onShare}>
-            <Text style={styles.shareButtonText}>Share</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Month navigation (outside capture) */}
-        <View style={styles.navRow}>
-          <TouchableOpacity
-            style={styles.navArrow}
-            onPress={() => setCurrentMonth((m) => subMonths(m, 1))}
-          >
-            <Text style={styles.navArrowText}>‹</Text>
-          </TouchableOpacity>
-          <Text style={styles.navMonth}>{monthLabel}</Text>
-          <TouchableOpacity
-            style={styles.navArrow}
-            onPress={() => setCurrentMonth((m) => addMonths(m, 1))}
-          >
-            <Text style={styles.navArrowText}>›</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Name toggle (outside capture) */}
-        <View style={styles.toggleRow}>
-          <Text style={styles.toggleLabel}>Show my name on share</Text>
-          <Switch
-            value={showName}
-            onValueChange={setShowName}
-            trackColor={{ true: APP_COLORS.accent, false: APP_COLORS.border }}
-          />
-        </View>
-
-        {/* Shareable portion */}
-        <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1 }} style={styles.shot}>
-          <Text style={styles.brand}>Buzzed.</Text>
-          <Text style={styles.shotMonth}>{monthLabel}</Text>
-          {showName && profile.name.trim().length > 0 && (
-            <Text style={styles.shotName}>Shared by {profile.name.trim()}</Text>
-          )}
-
-          {/* Weekday labels */}
-          <View style={styles.weekRow}>
-            {WEEKDAYS.map((w) => (
-              <Text key={w} style={styles.weekday}>
-                {w}
-              </Text>
-            ))}
-          </View>
-
-          {/* Grid */}
-          <View style={styles.grid}>
-            {cells.map((cell, i) => {
-              if (!cell) return <View key={`e${i}`} style={styles.cell} />;
-              const data = dayMap[cell.dateStr];
-              const isToday = cell.dateStr === todayStr;
-              const isFuture = cell.dateStr > todayStr;
-              const bg = data ? LEVEL_COLORS[data.maxLevel] : APP_COLORS.surface;
-              return (
-                <TouchableOpacity
-                  key={cell.dateStr}
-                  style={styles.cell}
-                  activeOpacity={isFuture ? 1 : 0.6}
-                  disabled={isFuture}
-                  onPress={() => onDayPress(cell)}
-                >
-                  <View
-                    style={[
-                      styles.cellInner,
-                      { backgroundColor: bg },
-                      isToday && styles.cellToday,
-                      isFuture && styles.cellFuture,
-                    ]}
-                  >
-                    <Text style={[styles.cellDay, data && styles.cellDayOnColor]}>{cell.day}</Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          {/* Legend */}
-          <View style={styles.legend}>
-            {LEVEL_CONFIGS.map((c) => (
-              <View key={c.label} style={styles.legendItem}>
-                <View style={[styles.legendSwatch, { backgroundColor: c.color }]} />
-                <Text style={styles.legendText}>{c.name}</Text>
+    <AnimatedGradientBackground>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Top bar (outside the shareable capture) */}
+          <View style={styles.topBar}>
+            <Text style={[TYPE.title, styles.screenTitle]}>Calendar</Text>
+            <PressableScale onPress={onShare}>
+              <View style={styles.shareButton}>
+                <Text style={styles.shareButtonText}>Share</Text>
               </View>
-            ))}
+            </PressableScale>
           </View>
-        </ViewShot>
-      </ScrollView>
-    </SafeAreaView>
+
+          {/* Month navigation (outside capture) */}
+          <View style={styles.navRow}>
+            <PressableScale onPress={() => setCurrentMonth((m) => subMonths(m, 1))}>
+              <View style={styles.navArrow}>
+                <Text style={styles.navArrowText}>‹</Text>
+              </View>
+            </PressableScale>
+            <Text style={styles.navMonth}>{monthLabel}</Text>
+            <PressableScale onPress={() => setCurrentMonth((m) => addMonths(m, 1))}>
+              <View style={styles.navArrow}>
+                <Text style={styles.navArrowText}>›</Text>
+              </View>
+            </PressableScale>
+          </View>
+
+          {/* Name toggle (outside capture) */}
+          <View style={styles.toggleRow}>
+            <Text style={styles.toggleLabel}>Show my name on share</Text>
+            <Switch
+              value={showName}
+              onValueChange={setShowName}
+              trackColor={{ true: APP_COLORS.accent, false: APP_COLORS.border }}
+            />
+          </View>
+
+          {/* Shareable portion — solid surfaces only (no blur / animation). */}
+          <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1 }} style={styles.shot}>
+            <Text style={styles.brand}>Buzzed.</Text>
+            <Text style={styles.shotMonth}>{monthLabel}</Text>
+            {showName && profile.name.trim().length > 0 && (
+              <Text style={styles.shotName}>Shared by {profile.name.trim()}</Text>
+            )}
+
+            {/* Weekday labels */}
+            <View style={styles.weekRow}>
+              {WEEKDAYS.map((w) => (
+                <Text key={w} style={styles.weekday}>
+                  {w}
+                </Text>
+              ))}
+            </View>
+
+            {/* Grid */}
+            <View style={styles.grid}>
+              {cells.map((cell, i) => {
+                if (!cell) return <View key={`e${i}`} style={styles.cell} />;
+                const data = dayMap[cell.dateStr];
+                const isToday = cell.dateStr === todayStr;
+                const isFuture = cell.dateStr > todayStr;
+                const bg = data ? LEVEL_COLORS[data.maxLevel] : withAlpha(APP_COLORS.surface, 0.9);
+                return (
+                  <TouchableOpacity
+                    key={cell.dateStr}
+                    style={styles.cell}
+                    activeOpacity={isFuture ? 1 : 0.6}
+                    disabled={isFuture}
+                    onPress={() => onDayPress(cell)}
+                  >
+                    <View
+                      style={[
+                        styles.cellInner,
+                        { backgroundColor: bg },
+                        isToday && styles.cellToday,
+                        isFuture && styles.cellFuture,
+                      ]}
+                    >
+                      <Text style={[styles.cellDay, data && styles.cellDayOnColor]}>{cell.day}</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Legend */}
+            <View style={styles.legend}>
+              {LEVEL_CONFIGS.map((c) => (
+                <View key={c.label} style={styles.legendItem}>
+                  <View style={[styles.legendSwatch, { backgroundColor: c.color }]} />
+                  <Text style={styles.legendText}>{c.name}</Text>
+                </View>
+              ))}
+            </View>
+          </ViewShot>
+        </ScrollView>
+      </SafeAreaView>
+    </AnimatedGradientBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: APP_COLORS.background },
-  content: { paddingHorizontal: 16, paddingBottom: 32 },
+  container: { flex: 1 },
+  content: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xxxl },
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 8,
+    marginTop: SPACING.sm,
+    marginBottom: SPACING.sm,
   },
-  screenTitle: { color: APP_COLORS.text, fontSize: 28, fontWeight: '800' },
+  screenTitle: { color: APP_COLORS.text },
   shareButton: {
     backgroundColor: APP_COLORS.accent,
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 18,
+    borderRadius: RADII.md,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
   },
-  shareButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
+  shareButtonText: { color: APP_COLORS.onAccent, fontSize: 15, fontWeight: '800' },
   navRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: SPACING.md,
   },
   navArrow: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: APP_COLORS.surface,
+    backgroundColor: withAlpha(APP_COLORS.surface, 0.85),
+    borderWidth: 1,
+    borderColor: APP_COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   navArrowText: { color: APP_COLORS.text, fontSize: 26, fontWeight: '700', lineHeight: 28 },
-  navMonth: { color: APP_COLORS.text, fontSize: 20, fontWeight: '700' },
+  navMonth: { ...TYPE.h2, color: APP_COLORS.text, fontSize: 20 },
   toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: SPACING.md,
   },
   toggleLabel: { color: APP_COLORS.textSecondary, fontSize: 14 },
-  shot: { backgroundColor: APP_COLORS.background, borderRadius: 16, padding: 14 },
-  brand: { color: APP_COLORS.text, fontSize: 30, fontWeight: '800' },
+  shot: {
+    backgroundColor: APP_COLORS.background,
+    borderRadius: RADII.lg,
+    borderWidth: 1,
+    borderColor: APP_COLORS.border,
+    padding: 14,
+  },
+  brand: { ...TYPE.title, color: APP_COLORS.text, fontSize: 30 },
   shotMonth: { color: APP_COLORS.textSecondary, fontSize: 16, marginTop: 2, marginBottom: 4 },
   shotName: { color: APP_COLORS.textSecondary, fontSize: 13, marginBottom: 6 },
-  weekRow: { flexDirection: 'row', marginTop: 8, marginBottom: 4 },
+  weekRow: { flexDirection: 'row', marginTop: SPACING.sm, marginBottom: 4 },
   weekday: {
     flex: 1,
     textAlign: 'center',
@@ -268,24 +283,24 @@ const styles = StyleSheet.create({
   cell: { width: `${100 / 7}%`, aspectRatio: 1, padding: 3 },
   cellInner: {
     flex: 1,
-    borderRadius: 8,
+    borderRadius: RADII.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cellToday: { borderWidth: 2, borderColor: APP_COLORS.text },
+  cellToday: { borderWidth: 2, borderColor: APP_COLORS.accent },
   cellFuture: { opacity: 0.4 },
   cellDay: { color: APP_COLORS.textSecondary, fontSize: 14, fontWeight: '600' },
   cellDayOnColor: { color: '#FFFFFF' },
   legend: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: 14,
+    marginTop: SPACING.md,
   },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '50%',
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   legendSwatch: { width: 14, height: 14, borderRadius: 4, marginRight: 8 },
   legendText: { color: APP_COLORS.textSecondary, fontSize: 13 },

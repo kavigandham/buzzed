@@ -23,6 +23,13 @@ import { useDrinkSearch, CATEGORY_PILLS } from '../hooks/useDrinkSearch';
 import { calcStandardDrinks } from '../utils/drinkCalculator';
 import { LibraryDrink } from '../types';
 import { APP_COLORS, CATEGORY_COLORS } from '../constants/colors';
+import { RADII, SPACING, TYPE, withAlpha } from '../constants/theme';
+import AnimatedGradientBackground from '../components/ui/AnimatedGradientBackground';
+import ScreenHeader from '../components/ui/ScreenHeader';
+import Pill from '../components/ui/Pill';
+import PressableScale from '../components/ui/PressableScale';
+import GradientButton from '../components/ui/GradientButton';
+import GlassCard from '../components/ui/GlassCard';
 
 function categoryLabel(value: string): string {
   const pill = CATEGORY_PILLS.find((p) => p.value === value);
@@ -101,234 +108,212 @@ export default function DrinkLibraryScreen() {
   };
 
   const renderItem = ({ item }: { item: LibraryDrink }) => (
-    <TouchableOpacity style={styles.card} onPress={() => openDetail(item)}>
-      <View style={[styles.dot, { backgroundColor: CATEGORY_COLORS[item.category] }]} />
-      <View style={styles.cardBody}>
-        <Text style={styles.cardName} numberOfLines={1}>
-          {item.name}
-        </Text>
-        <Text style={styles.cardMeta}>
-          {categoryLabel(item.category)} · {(item.abv * 100).toFixed(1)}% · {item.defaultServingOz} oz
-        </Text>
+    <PressableScale onPress={() => openDetail(item)} style={styles.cardWrap}>
+      <View style={styles.card}>
+        <View style={[styles.dot, { backgroundColor: CATEGORY_COLORS[item.category] }]} />
+        <View style={styles.cardBody}>
+          <Text style={styles.cardName} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <Text style={styles.cardMeta}>
+            {categoryLabel(item.category)} · {(item.abv * 100).toFixed(1)}% · {item.defaultServingOz} oz
+          </Text>
+        </View>
       </View>
-    </TouchableOpacity>
+    </PressableScale>
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <Text style={styles.title}>Library</Text>
+    <AnimatedGradientBackground>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        <ScreenHeader title="Library" />
 
-      <TextInput
-        style={styles.search}
-        placeholder="Search drinks…"
-        placeholderTextColor={APP_COLORS.textSecondary}
-        value={searchInput}
-        onChangeText={setSearchInput}
-        autoCorrect={false}
-      />
+        <TextInput
+          style={styles.search}
+          placeholder="Search drinks…"
+          placeholderTextColor={APP_COLORS.textSecondary}
+          value={searchInput}
+          onChangeText={setSearchInput}
+          autoCorrect={false}
+        />
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.pillsRow}
-        contentContainerStyle={styles.pillsContent}
-      >
-        {CATEGORY_PILLS.map((pill) => {
-          const active = pill.value === category;
-          return (
-            <TouchableOpacity
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.pillsRow}
+          contentContainerStyle={styles.pillsContent}
+        >
+          {CATEGORY_PILLS.map((pill) => (
+            <Pill
               key={pill.value}
-              style={[styles.pill, active && styles.pillActive]}
+              label={pill.label}
+              active={pill.value === category}
               onPress={() => setCategory(pill.value)}
-            >
-              <Text style={[styles.pillText, active && styles.pillTextActive]}>{pill.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+              style={styles.pillSpacing}
+            />
+          ))}
+        </ScrollView>
 
-      <Text style={styles.count}>
-        Showing {drinks.length} of {totalCount} drinks
-      </Text>
+        <Text style={styles.count}>
+          Showing {drinks.length} of {totalCount} drinks
+        </Text>
 
-      <FlatList
-        data={drinks}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
-        keyboardShouldPersistTaps="handled"
-        ListEmptyComponent={<Text style={styles.empty}>No drinks match your search</Text>}
-      />
+        <FlatList
+          data={drinks}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          keyboardShouldPersistTaps="handled"
+          ListEmptyComponent={<Text style={styles.empty}>No drinks match your search</Text>}
+        />
 
-      <TouchableOpacity style={styles.addCustomButton} onPress={() => setShowCustomForm(true)}>
-        <Text style={styles.addCustomText}>+ Add Custom Drink</Text>
-      </TouchableOpacity>
+        <GradientButton
+          title="+ Add Custom Drink"
+          variant="outline"
+          onPress={() => setShowCustomForm(true)}
+          style={styles.addCustom}
+        />
 
-      {/* Detail modal */}
-      <Modal visible={detailDrink !== null} animationType="slide" transparent>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.overlay}
-        >
-          <View style={styles.detailCard}>
-            {detailDrink && (
-              <>
-                <View style={styles.detailHeader}>
-                  <View
-                    style={[styles.dotLarge, { backgroundColor: CATEGORY_COLORS[detailDrink.category] }]}
+        {/* Detail modal */}
+        <Modal visible={detailDrink !== null} animationType="slide" transparent>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.overlay}
+          >
+            <GlassCard strong style={styles.detailCard}>
+              {detailDrink && (
+                <>
+                  <View style={styles.detailHeader}>
+                    <View
+                      style={[styles.dotLarge, { backgroundColor: CATEGORY_COLORS[detailDrink.category] }]}
+                    />
+                    <Text style={styles.detailName}>{detailDrink.name}</Text>
+                  </View>
+
+                  <Text style={styles.detailRow}>Category: {categoryLabel(detailDrink.category)}</Text>
+                  <Text style={styles.detailRow}>ABV: {(detailDrink.abv * 100).toFixed(1)}%</Text>
+                  <Text style={styles.detailRow}>Default serving: {detailDrink.defaultServingOz} oz</Text>
+
+                  <Text style={styles.detailLabel}>Serving size (oz)</Text>
+                  <TextInput
+                    style={styles.detailInput}
+                    keyboardType="numeric"
+                    value={detailServing}
+                    onChangeText={setDetailServing}
                   />
-                  <Text style={styles.detailName}>{detailDrink.name}</Text>
-                </View>
 
-                <Text style={styles.detailRow}>Category: {categoryLabel(detailDrink.category)}</Text>
-                <Text style={styles.detailRow}>ABV: {(detailDrink.abv * 100).toFixed(1)}%</Text>
-                <Text style={styles.detailRow}>Default serving: {detailDrink.defaultServingOz} oz</Text>
+                  <Text style={styles.calc}>
+                    = {calcStandardDrinks(detailServingOz(), detailDrink.abv).toFixed(2)} standard drinks
+                  </Text>
 
-                <Text style={styles.detailLabel}>Serving size (oz)</Text>
-                <TextInput
-                  style={styles.detailInput}
-                  keyboardType="numeric"
-                  value={detailServing}
-                  onChangeText={setDetailServing}
-                />
+                  <View style={styles.detailActions}>
+                    <TouchableOpacity style={styles.detailCancel} onPress={() => setDetailDrink(null)}>
+                      <Text style={styles.detailCancelText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <GradientButton title="Log This Drink" onPress={logFromDetail} />
+                  </View>
+                </>
+              )}
+            </GlassCard>
+          </KeyboardAvoidingView>
+        </Modal>
 
-                <Text style={styles.calc}>
-                  = {calcStandardDrinks(detailServingOz(), detailDrink.abv).toFixed(2)} standard drinks
-                </Text>
-
-                <View style={styles.detailActions}>
-                  <TouchableOpacity style={styles.detailCancel} onPress={() => setDetailDrink(null)}>
-                    <Text style={styles.detailCancelText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.detailLog} onPress={logFromDetail}>
-                    <Text style={styles.detailLogText}>Log This Drink</Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      {/* Add custom drink form */}
-      <Modal visible={showCustomForm} animationType="fade" transparent>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.overlay}
-        >
-          <View style={styles.detailCard}>
-            <Text style={styles.detailName}>Add Custom Drink</Text>
-            <TextInput
-              style={styles.detailInput}
-              placeholder="Name"
-              placeholderTextColor={APP_COLORS.textSecondary}
-              value={customName}
-              onChangeText={setCustomName}
-            />
-            <TextInput
-              style={styles.detailInput}
-              placeholder="ABV %"
-              placeholderTextColor={APP_COLORS.textSecondary}
-              keyboardType="numeric"
-              value={customAbv}
-              onChangeText={setCustomAbv}
-            />
-            <TextInput
-              style={styles.detailInput}
-              placeholder="Serving oz"
-              placeholderTextColor={APP_COLORS.textSecondary}
-              keyboardType="numeric"
-              value={customOz}
-              onChangeText={setCustomOz}
-            />
-            <View style={styles.detailActions}>
-              <TouchableOpacity
-                style={styles.detailCancel}
-                onPress={() => setShowCustomForm(false)}
-              >
-                <Text style={styles.detailCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.detailLog} onPress={handleAddCustom}>
-                <Text style={styles.detailLogText}>Save</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-    </SafeAreaView>
+        {/* Add custom drink form */}
+        <Modal visible={showCustomForm} animationType="fade" transparent>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.overlay}
+          >
+            <GlassCard strong style={styles.detailCard}>
+              <Text style={styles.detailName}>Add Custom Drink</Text>
+              <TextInput
+                style={styles.detailInput}
+                placeholder="Name"
+                placeholderTextColor={APP_COLORS.textSecondary}
+                value={customName}
+                onChangeText={setCustomName}
+              />
+              <TextInput
+                style={styles.detailInput}
+                placeholder="ABV %"
+                placeholderTextColor={APP_COLORS.textSecondary}
+                keyboardType="numeric"
+                value={customAbv}
+                onChangeText={setCustomAbv}
+              />
+              <TextInput
+                style={styles.detailInput}
+                placeholder="Serving oz"
+                placeholderTextColor={APP_COLORS.textSecondary}
+                keyboardType="numeric"
+                value={customOz}
+                onChangeText={setCustomOz}
+              />
+              <View style={styles.detailActions}>
+                <TouchableOpacity style={styles.detailCancel} onPress={() => setShowCustomForm(false)}>
+                  <Text style={styles.detailCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <GradientButton title="Save" onPress={handleAddCustom} />
+              </View>
+            </GlassCard>
+          </KeyboardAvoidingView>
+        </Modal>
+      </SafeAreaView>
+    </AnimatedGradientBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: APP_COLORS.background, paddingHorizontal: 16 },
-  title: { color: APP_COLORS.text, fontSize: 28, fontWeight: '800', marginTop: 8, marginBottom: 12 },
+  container: { flex: 1, paddingHorizontal: SPACING.lg },
   search: {
-    backgroundColor: APP_COLORS.surface,
-    borderRadius: 10,
+    backgroundColor: withAlpha(APP_COLORS.surface, 0.85),
+    borderRadius: RADII.md,
     borderWidth: 1,
     borderColor: APP_COLORS.border,
     color: APP_COLORS.text,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
-    marginBottom: 10,
+    marginBottom: SPACING.md,
   },
-  pillsRow: { flexGrow: 0, marginBottom: 8 },
-  pillsContent: { paddingRight: 8 },
-  pill: {
-    backgroundColor: APP_COLORS.surface,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: APP_COLORS.border,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    marginRight: 8,
-  },
-  pillActive: { backgroundColor: APP_COLORS.accent, borderColor: APP_COLORS.accent },
-  pillText: { color: APP_COLORS.textSecondary, fontSize: 14, fontWeight: '600' },
-  pillTextActive: { color: '#FFFFFF' },
-  count: { color: APP_COLORS.textSecondary, fontSize: 13, marginBottom: 10 },
+  pillsRow: { flexGrow: 0, marginBottom: SPACING.sm },
+  pillsContent: { paddingRight: SPACING.sm },
+  pillSpacing: { marginRight: SPACING.sm },
+  count: { color: APP_COLORS.textSecondary, fontSize: 13, marginBottom: SPACING.md },
   list: { flex: 1 },
-  listContent: { paddingBottom: 12 },
+  listContent: { paddingBottom: SPACING.md },
+  cardWrap: { marginBottom: SPACING.sm },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: APP_COLORS.surface,
-    borderRadius: 12,
+    backgroundColor: withAlpha(APP_COLORS.surface, 0.85),
+    borderRadius: RADII.md,
+    borderWidth: 1,
+    borderColor: APP_COLORS.border,
     padding: 14,
-    marginBottom: 8,
   },
   dot: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
   cardBody: { flex: 1 },
   cardName: { color: APP_COLORS.text, fontSize: 16, fontWeight: '600' },
   cardMeta: { color: APP_COLORS.textSecondary, fontSize: 13, marginTop: 2 },
-  empty: { color: APP_COLORS.textSecondary, fontSize: 15, textAlign: 'center', marginTop: 24 },
-  addCustomButton: {
-    backgroundColor: APP_COLORS.surface,
-    borderWidth: 1,
-    borderColor: APP_COLORS.accent,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginVertical: 10,
-  },
-  addCustomText: { color: APP_COLORS.accent, fontSize: 16, fontWeight: '700' },
+  empty: { color: APP_COLORS.textSecondary, fontSize: 15, textAlign: 'center', marginTop: SPACING.xxl },
+  addCustom: { marginVertical: SPACING.md },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: SPACING.xxl,
   },
-  detailCard: { backgroundColor: APP_COLORS.surface, borderRadius: 16, padding: 20 },
+  detailCard: { padding: SPACING.xl },
   detailHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
   dotLarge: { width: 16, height: 16, borderRadius: 8, marginRight: 10 },
-  detailName: { color: APP_COLORS.text, fontSize: 22, fontWeight: '800', flexShrink: 1 },
+  detailName: { ...TYPE.h2, color: APP_COLORS.text, fontSize: 22, fontWeight: '800', flexShrink: 1 },
   detailRow: { color: APP_COLORS.textSecondary, fontSize: 15, marginBottom: 4 },
   detailLabel: { color: APP_COLORS.textSecondary, fontSize: 13, marginTop: 12, marginBottom: 6 },
   detailInput: {
-    backgroundColor: APP_COLORS.background,
-    borderRadius: 10,
+    backgroundColor: withAlpha('#000000', 0.25),
+    borderRadius: RADII.md,
     borderWidth: 1,
     borderColor: APP_COLORS.border,
     color: APP_COLORS.text,
@@ -341,11 +326,4 @@ const styles = StyleSheet.create({
   detailActions: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' },
   detailCancel: { paddingVertical: 12, paddingHorizontal: 16 },
   detailCancelText: { color: APP_COLORS.textSecondary, fontSize: 16, fontWeight: '600' },
-  detailLog: {
-    backgroundColor: APP_COLORS.accent,
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-  },
-  detailLogText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
 });

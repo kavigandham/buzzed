@@ -24,6 +24,12 @@ import { getDrinkById } from '../data/drinkLibrary';
 import { useDrinkSearch, CATEGORY_PILLS } from '../hooks/useDrinkSearch';
 import { LibraryDrink } from '../types';
 import { APP_COLORS, CATEGORY_COLORS } from '../constants/colors';
+import { RADII, SPACING, TYPE, withAlpha } from '../constants/theme';
+import AnimatedGradientBackground from './ui/AnimatedGradientBackground';
+import Pill from './ui/Pill';
+import PressableScale from './ui/PressableScale';
+import GradientButton from './ui/GradientButton';
+import GlassCard from './ui/GlassCard';
 
 interface Props {
   visible: boolean;
@@ -126,26 +132,29 @@ export default function DrinkSelectionModal({ visible, onClose }: Props) {
   };
 
   const renderDrink = ({ item }: { item: LibraryDrink }) => (
-    <TouchableOpacity
-      style={styles.card}
+    <PressableScale
+      style={styles.cardWrap}
       onPress={() => logById(item.id)}
       onLongPress={() => openServingOverride(item)}
     >
-      <View style={[styles.dot, { backgroundColor: CATEGORY_COLORS[item.category] }]} />
-      <View style={styles.cardBody}>
-        <Text style={styles.cardName} numberOfLines={1}>
-          {item.name}
-        </Text>
-        <Text style={styles.cardMeta}>
-          {(item.abv * 100).toFixed(1)}% · {item.defaultServingOz} oz
-        </Text>
+      <View style={styles.card}>
+        <View style={[styles.dot, { backgroundColor: CATEGORY_COLORS[item.category] }]} />
+        <View style={styles.cardBody}>
+          <Text style={styles.cardName} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <Text style={styles.cardMeta}>
+            {(item.abv * 100).toFixed(1)}% · {item.defaultServingOz} oz
+          </Text>
+        </View>
+        <Text style={styles.cardHint}>Tap to log</Text>
       </View>
-      <Text style={styles.cardHint}>Tap to log</Text>
-    </TouchableOpacity>
+    </PressableScale>
   );
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={resetAndClose}>
+      <AnimatedGradientBackground>
       <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
         {/* Header */}
         <View style={styles.header}>
@@ -161,16 +170,18 @@ export default function DrinkSelectionModal({ visible, onClose }: Props) {
           {profile.quickSlots.map((slotId, index) => {
             const drink = resolve(slotId);
             return (
-              <TouchableOpacity
+              <PressableScale
                 key={index}
-                style={[styles.quickSlot, !drink && styles.quickSlotEmpty]}
+                style={styles.quickSlotWrap}
                 disabled={!drink}
                 onPress={() => drink && logById(drink.id)}
               >
-                <Text numberOfLines={2} style={styles.quickSlotText}>
-                  {drink ? drink.name : 'Empty'}
-                </Text>
-              </TouchableOpacity>
+                <View style={[styles.quickSlot, !drink && styles.quickSlotEmpty]}>
+                  <Text numberOfLines={2} style={styles.quickSlotText}>
+                    {drink ? drink.name : 'Empty'}
+                  </Text>
+                </View>
+              </PressableScale>
             );
           })}
         </View>
@@ -217,20 +228,15 @@ export default function DrinkSelectionModal({ visible, onClose }: Props) {
           style={styles.pillsRow}
           contentContainerStyle={styles.pillsContent}
         >
-          {CATEGORY_PILLS.map((pill) => {
-            const active = pill.value === category;
-            return (
-              <TouchableOpacity
-                key={pill.value}
-                style={[styles.pill, active && styles.pillActive]}
-                onPress={() => setCategory(pill.value)}
-              >
-                <Text style={[styles.pillText, active && styles.pillTextActive]}>
-                  {pill.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+          {CATEGORY_PILLS.map((pill) => (
+            <Pill
+              key={pill.value}
+              label={pill.label}
+              active={pill.value === category}
+              onPress={() => setCategory(pill.value)}
+              style={styles.pillSpacing}
+            />
+          ))}
         </ScrollView>
 
         {/* Drink list */}
@@ -245,15 +251,14 @@ export default function DrinkSelectionModal({ visible, onClose }: Props) {
         />
 
         {/* Add custom drink */}
-        <TouchableOpacity
-          style={styles.addCustomButton}
+        <GradientButton
+          title={showCustomForm ? 'Close custom form' : '+ Add Custom Drink'}
+          variant="outline"
           onPress={() => setShowCustomForm((v) => !v)}
-        >
-          <Text style={styles.addCustomText}>
-            {showCustomForm ? 'Close custom form' : '+ Add Custom Drink'}
-          </Text>
-        </TouchableOpacity>
+          style={styles.addCustom}
+        />
       </SafeAreaView>
+      </AnimatedGradientBackground>
 
       {/* Serving override overlay */}
       <Modal visible={servingTarget !== null} animationType="fade" transparent>
@@ -261,7 +266,7 @@ export default function DrinkSelectionModal({ visible, onClose }: Props) {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.overlay}
         >
-          <View style={styles.overlayCard}>
+          <GlassCard strong style={styles.overlayCard}>
             <Text style={styles.overlayTitle}>{servingTarget?.name}</Text>
             <Text style={styles.overlayLabel}>Serving size (oz)</Text>
             <TextInput
@@ -278,11 +283,9 @@ export default function DrinkSelectionModal({ visible, onClose }: Props) {
               >
                 <Text style={styles.overlayCancelText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.overlayConfirm} onPress={confirmServingOverride}>
-                <Text style={styles.overlayConfirmText}>Log</Text>
-              </TouchableOpacity>
+              <GradientButton title="Log" onPress={confirmServingOverride} />
             </View>
-          </View>
+          </GlassCard>
         </KeyboardAvoidingView>
       </Modal>
 
@@ -292,7 +295,7 @@ export default function DrinkSelectionModal({ visible, onClose }: Props) {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.overlay}
         >
-          <View style={styles.overlayCard}>
+          <GlassCard strong style={styles.overlayCard}>
             <Text style={styles.overlayTitle}>Add Custom Drink</Text>
             <TextInput
               style={styles.overlayInput}
@@ -324,11 +327,9 @@ export default function DrinkSelectionModal({ visible, onClose }: Props) {
               >
                 <Text style={styles.overlayCancelText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.overlayConfirm} onPress={handleAddCustom}>
-                <Text style={styles.overlayConfirmText}>Save & Log</Text>
-              </TouchableOpacity>
+              <GradientButton title="Save & Log" onPress={handleAddCustom} />
             </View>
-          </View>
+          </GlassCard>
         </KeyboardAvoidingView>
       </Modal>
     </Modal>
@@ -338,36 +339,32 @@ export default function DrinkSelectionModal({ visible, onClose }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: APP_COLORS.background,
-    paddingHorizontal: 16,
+    paddingHorizontal: SPACING.lg,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 12,
+    marginTop: SPACING.sm,
+    marginBottom: SPACING.md,
   },
   title: { color: APP_COLORS.text, fontSize: 24, fontWeight: '800' },
   close: { color: APP_COLORS.textSecondary, fontSize: 22, fontWeight: '700' },
   sectionLabel: {
+    ...TYPE.label,
     color: APP_COLORS.textSecondary,
-    fontSize: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginTop: 8,
-    marginBottom: 8,
+    marginTop: SPACING.sm,
+    marginBottom: SPACING.sm,
   },
   quickRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  quickSlotWrap: { flex: 1, marginHorizontal: 3 },
   quickSlot: {
-    flex: 1,
-    backgroundColor: APP_COLORS.surface,
-    borderRadius: 10,
+    backgroundColor: withAlpha(APP_COLORS.surface, 0.85),
+    borderRadius: RADII.md,
     borderWidth: 1,
     borderColor: APP_COLORS.border,
     paddingVertical: 12,
     paddingHorizontal: 6,
-    marginHorizontal: 3,
     minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
@@ -380,89 +377,64 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   recentRow: { flexGrow: 0 },
-  recentContent: { paddingRight: 8 },
+  recentContent: { paddingRight: SPACING.sm },
   recentChip: {
-    backgroundColor: APP_COLORS.surface,
-    borderRadius: 999,
+    backgroundColor: withAlpha(APP_COLORS.surface, 0.85),
+    borderRadius: RADII.pill,
     borderWidth: 1,
     borderColor: APP_COLORS.border,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    marginRight: 8,
+    marginRight: SPACING.sm,
     maxWidth: 160,
   },
   recentChipText: { color: APP_COLORS.text, fontSize: 14, fontWeight: '600' },
   search: {
-    backgroundColor: APP_COLORS.surface,
-    borderRadius: 10,
+    backgroundColor: withAlpha(APP_COLORS.surface, 0.85),
+    borderRadius: RADII.md,
     borderWidth: 1,
     borderColor: APP_COLORS.border,
     color: APP_COLORS.text,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
-    marginTop: 12,
-    marginBottom: 10,
+    marginTop: SPACING.md,
+    marginBottom: SPACING.md,
   },
-  pillsRow: { flexGrow: 0, marginBottom: 8 },
-  pillsContent: { paddingRight: 8 },
-  pill: {
-    backgroundColor: APP_COLORS.surface,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: APP_COLORS.border,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    marginRight: 8,
-  },
-  pillActive: {
-    backgroundColor: APP_COLORS.accent,
-    borderColor: APP_COLORS.accent,
-  },
-  pillText: { color: APP_COLORS.textSecondary, fontSize: 14, fontWeight: '600' },
-  pillTextActive: { color: '#FFFFFF' },
+  pillsRow: { flexGrow: 0, marginBottom: SPACING.sm },
+  pillsContent: { paddingRight: SPACING.sm },
+  pillSpacing: { marginRight: SPACING.sm },
   list: { flex: 1 },
-  listContent: { paddingBottom: 12 },
+  listContent: { paddingBottom: SPACING.md },
+  cardWrap: { marginBottom: SPACING.sm },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: APP_COLORS.surface,
-    borderRadius: 12,
+    backgroundColor: withAlpha(APP_COLORS.surface, 0.85),
+    borderRadius: RADII.md,
+    borderWidth: 1,
+    borderColor: APP_COLORS.border,
     padding: 14,
-    marginBottom: 8,
   },
   dot: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
   cardBody: { flex: 1 },
   cardName: { color: APP_COLORS.text, fontSize: 16, fontWeight: '600' },
   cardMeta: { color: APP_COLORS.textSecondary, fontSize: 13, marginTop: 2 },
   cardHint: { color: APP_COLORS.textSecondary, fontSize: 12 },
-  empty: { color: APP_COLORS.textSecondary, fontSize: 15, textAlign: 'center', marginTop: 24 },
-  addCustomButton: {
-    backgroundColor: APP_COLORS.surface,
-    borderWidth: 1,
-    borderColor: APP_COLORS.accent,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginVertical: 10,
-  },
-  addCustomText: { color: APP_COLORS.accent, fontSize: 16, fontWeight: '700' },
+  empty: { color: APP_COLORS.textSecondary, fontSize: 15, textAlign: 'center', marginTop: SPACING.xxl },
+  addCustom: { marginVertical: SPACING.md },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: SPACING.xxl,
   },
-  overlayCard: {
-    backgroundColor: APP_COLORS.surface,
-    borderRadius: 16,
-    padding: 20,
-  },
+  overlayCard: { padding: SPACING.xl },
   overlayTitle: { color: APP_COLORS.text, fontSize: 20, fontWeight: '800', marginBottom: 12 },
   overlayLabel: { color: APP_COLORS.textSecondary, fontSize: 13, marginBottom: 6 },
   overlayInput: {
-    backgroundColor: APP_COLORS.background,
-    borderRadius: 10,
+    backgroundColor: withAlpha('#000000', 0.25),
+    borderRadius: RADII.md,
     borderWidth: 1,
     borderColor: APP_COLORS.border,
     color: APP_COLORS.text,
@@ -471,14 +443,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 12,
   },
-  overlayActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 4 },
+  overlayActions: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginTop: 4 },
   overlayCancel: { paddingVertical: 12, paddingHorizontal: 16 },
   overlayCancelText: { color: APP_COLORS.textSecondary, fontSize: 16, fontWeight: '600' },
-  overlayConfirm: {
-    backgroundColor: APP_COLORS.accent,
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-  },
-  overlayConfirmText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
 });

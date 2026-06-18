@@ -16,6 +16,9 @@ import {
 import { calcStandardDrinks } from '../utils/drinkCalculator';
 import { DrinkCategory } from '../types';
 import { APP_COLORS, CATEGORY_COLORS } from '../constants/colors';
+import { RADII, SPACING, withAlpha } from '../constants/theme';
+import GlassCard from './ui/GlassCard';
+import GradientButton from './ui/GradientButton';
 
 export interface DetailDrink {
   id: string;
@@ -62,7 +65,7 @@ export default function DrinkDetailModal({ drink, onClose, onLog }: Props) {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.overlay}
       >
-        <View style={styles.card}>
+        <GlassCard strong style={styles.card}>
           {drink && (
             <>
               <View style={styles.header}>
@@ -90,13 +93,11 @@ export default function DrinkDetailModal({ drink, onClose, onLog }: Props) {
                 <TouchableOpacity style={styles.cancel} onPress={onClose}>
                   <Text style={styles.cancelText}>Cancel</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.log} onPress={handleLog}>
-                  <Text style={styles.logText}>Log This Drink</Text>
-                </TouchableOpacity>
+                <GradientButton title="Log This Drink" onPress={handleLog} />
               </View>
             </>
           )}
-        </View>
+        </GlassCard>
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -109,15 +110,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 24,
   },
-  card: { backgroundColor: APP_COLORS.surface, borderRadius: 16, padding: 20 },
+  card: { padding: SPACING.xl },
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
   dot: { width: 16, height: 16, borderRadius: 8, marginRight: 10 },
   name: { color: APP_COLORS.text, fontSize: 22, fontWeight: '800', flexShrink: 1 },
   row: { color: APP_COLORS.textSecondary, fontSize: 15, marginBottom: 4 },
   label: { color: APP_COLORS.textSecondary, fontSize: 13, marginTop: 12, marginBottom: 6 },
   input: {
-    backgroundColor: APP_COLORS.background,
-    borderRadius: 10,
+    backgroundColor: withAlpha('#000000', 0.25),
+    borderRadius: RADII.md,
     borderWidth: 1,
     borderColor: APP_COLORS.border,
     color: APP_COLORS.text,
@@ -130,11 +131,4 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' },
   cancel: { paddingVertical: 12, paddingHorizontal: 16 },
   cancelText: { color: APP_COLORS.textSecondary, fontSize: 16, fontWeight: '600' },
-  log: {
-    backgroundColor: APP_COLORS.accent,
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-  },
-  logText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
 });

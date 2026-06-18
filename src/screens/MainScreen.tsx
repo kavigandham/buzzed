@@ -3,26 +3,29 @@
 // context updating activeStdDrinks etc. every second, which also recomputes the
 // per-drink progress bars below from Date.now().
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  Animated,
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 
 import { useDrink } from '../contexts/DrinkContext';
 import { getDrinkById } from '../data/drinkLibrary';
 import { calcRemaining } from '../utils/drinkCalculator';
-import { LibraryDrink } from '../types';
+import { LibraryDrink, LoggedDrink } from '../types';
 import { APP_COLORS } from '../constants/colors';
+import { RADII, SPACING, TYPE, withAlpha } from '../constants/theme';
 import DrinkSelectionModal from '../components/DrinkSelectionModal';
+import AnimatedGradientBackground from '../components/ui/AnimatedGradientBackground';
+import LevelMeter from '../components/ui/LevelMeter';
+import GradientButton from '../components/ui/GradientButton';
+import PressableScale from '../components/ui/PressableScale';
 
-const GRADIENT = ['#0F1115', '#1A1430', '#1A1D23'] as const;
 const DISCLAIMER =
   'For entertainment only. Do not use to determine fitness to drive.';
 
@@ -65,100 +68,75 @@ export default function MainScreen() {
   const now = Date.now();
 
   return (
-    <LinearGradient colors={GRADIENT} style={styles.fill}>
+    <AnimatedGradientBackground>
       <SafeAreaView style={styles.fill} edges={['top', 'left', 'right']}>
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <Text style={styles.title}>Buzzed.</Text>
           {profile.name.trim().length > 0 && (
             <Text style={styles.greeting}>Hey, {profile.name.trim()}</Text>
           )}
 
-          {/* Level chip */}
-          <View style={styles.chipRow}>
-            <View style={[styles.chip, { backgroundColor: levelConfig.color }]}>
-              <Text style={styles.chipText}>{levelConfig.name}</Text>
-            </View>
-          </View>
-
-          {/* Active standard drinks */}
-          <View style={styles.statBlock}>
-            <Text style={styles.statNumber}>{activeStdDrinks.toFixed(3)}</Text>
-            <Text style={styles.statLabel}>active standard drinks</Text>
-          </View>
-
-          {/* Time to sober */}
-          <View style={styles.statBlock}>
-            <Text style={styles.soberTime}>{formatTimeToSober(timeToSober)}</Text>
-            <Text style={styles.statLabel}>until sober</Text>
-          </View>
+          {/* Hero level meter */}
+          <LevelMeter
+            levelName={levelConfig.name}
+            color={levelConfig.color}
+            activeStdDrinks={activeStdDrinks}
+            timeLabel={formatTimeToSober(timeToSober)}
+          />
 
           {/* Quick slots */}
           <View style={styles.quickRow}>
             {profile.quickSlots.map((slotId, index) => {
               const drink = resolveSlot(slotId);
               return (
-                <TouchableOpacity
+                <PressableScale
                   key={index}
-                  style={[styles.quickSlot, !drink && styles.quickSlotEmpty]}
+                  style={styles.quickSlotWrap}
                   disabled={!drink}
                   onPress={() => drink && logDrink(drink.id)}
                 >
-                  <Text
-                    numberOfLines={2}
-                    style={[styles.quickSlotText, !drink && styles.quickSlotTextEmpty]}
-                  >
-                    {drink ? drink.name : 'Configure'}
-                  </Text>
-                </TouchableOpacity>
+                  <View style={[styles.quickSlot, !drink && styles.quickSlotEmpty]}>
+                    <Text
+                      numberOfLines={2}
+                      style={[styles.quickSlotText, !drink && styles.quickSlotTextEmpty]}
+                    >
+                      {drink ? drink.name : 'Configure'}
+                    </Text>
+                  </View>
+                </PressableScale>
               );
             })}
           </View>
 
           {/* Log a Drink */}
-          <TouchableOpacity style={styles.logButton} onPress={() => setModalVisible(true)}>
-            <Text style={styles.logButtonText}>+ Log a Drink</Text>
-          </TouchableOpacity>
+          <GradientButton
+            title="+ Log a Drink"
+            onPress={() => setModalVisible(true)}
+            style={styles.logButton}
+          />
 
           {/* Active drink list */}
           <Text style={styles.sectionHeader}>This session</Text>
           {loggedDrinks.length === 0 ? (
             <Text style={styles.emptyText}>No drinks logged yet.</Text>
           ) : (
-            loggedDrinks.map((drink) => {
-              const remaining = calcRemaining(drink.standardDrinks, now - drink.timestamp);
-              const pct =
-                drink.standardDrinks > 0
-                  ? Math.max(0, Math.min(1, remaining / drink.standardDrinks))
-                  : 0;
-              const decayed = remaining <= 0;
-              return (
-                <View
-                  key={drink.id}
-                  style={[styles.drinkRow, decayed && styles.drinkRowDecayed]}
-                >
-                  <View style={styles.drinkRowTop}>
-                    <Text style={styles.drinkName} numberOfLines={1}>
-                      {drink.name}
-                    </Text>
-                    <Text style={styles.drinkRemaining}>{remaining.toFixed(3)}</Text>
-                  </View>
-                  <View style={styles.progressTrack}>
-                    <View
-                      style={[
-                        styles.progressFill,
-                        { width: `${pct * 100}%`, backgroundColor: levelConfig.color },
-                      ]}
-                    />
-                  </View>
-                </View>
-              );
-            })
+            loggedDrinks.map((drink) => (
+              <SessionDrinkRow
+                key={drink.id}
+                drink={drink}
+                now={now}
+                color={levelConfig.color}
+              />
+            ))
           )}
 
           {/* Restart session */}
-          <TouchableOpacity style={styles.restartButton} onPress={confirmRestart}>
-            <Text style={styles.restartText}>Restart Session</Text>
-          </TouchableOpacity>
+          <GradientButton
+            title="Restart Session"
+            variant="danger"
+            onPress={confirmRestart}
+            style={styles.restartButton}
+          />
 
           {/* Disclaimer */}
           <Text style={styles.disclaimer}>{DISCLAIMER}</Text>
@@ -166,76 +144,98 @@ export default function MainScreen() {
       </SafeAreaView>
 
       <DrinkSelectionModal visible={modalVisible} onClose={() => setModalVisible(false)} />
-    </LinearGradient>
+    </AnimatedGradientBackground>
+  );
+}
+
+// One session drink: fades/slides in on mount, animates its decay bar width.
+function SessionDrinkRow({
+  drink,
+  now,
+  color,
+}: {
+  drink: LoggedDrink;
+  now: number;
+  color: string;
+}) {
+  const enter = useRef(new Animated.Value(0)).current;
+  const fill = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.timing(enter, { toValue: 1, duration: 350, useNativeDriver: true }).start();
+  }, [enter]);
+
+  const remaining = calcRemaining(drink.standardDrinks, now - drink.timestamp);
+  const pct =
+    drink.standardDrinks > 0
+      ? Math.max(0, Math.min(1, remaining / drink.standardDrinks))
+      : 0;
+  const decayed = remaining <= 0;
+
+  useEffect(() => {
+    Animated.timing(fill, { toValue: pct, duration: 500, useNativeDriver: false }).start();
+  }, [pct, fill]);
+
+  const fillWidth = fill.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
+
+  return (
+    <Animated.View
+      style={[
+        styles.drinkRow,
+        decayed && styles.drinkRowDecayed,
+        {
+          opacity: enter,
+          transform: [
+            { translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) },
+          ],
+        },
+      ]}
+    >
+      <View style={styles.drinkRowTop}>
+        <Text style={styles.drinkName} numberOfLines={1}>
+          {drink.name}
+        </Text>
+        <Text style={styles.drinkRemaining}>{remaining.toFixed(2)}</Text>
+      </View>
+      <View style={styles.progressTrack}>
+        <Animated.View style={[styles.progressFill, { width: fillWidth, backgroundColor: color }]} />
+      </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   content: {
-    paddingHorizontal: 20,
+    paddingHorizontal: SPACING.xl,
     paddingBottom: 48,
   },
   title: {
+    ...TYPE.display,
     color: APP_COLORS.text,
-    fontSize: 44,
-    fontWeight: '800',
-    marginTop: 8,
-    marginBottom: 8,
+    marginTop: SPACING.sm,
+    marginBottom: SPACING.sm,
   },
   greeting: {
     color: APP_COLORS.textSecondary,
     fontSize: 16,
-    marginBottom: 14,
-  },
-  chipRow: {
-    flexDirection: 'row',
-    marginBottom: 20,
-  },
-  chip: {
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    borderRadius: 999,
-  },
-  chipText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  statBlock: {
-    marginBottom: 18,
-  },
-  statNumber: {
-    color: APP_COLORS.text,
-    fontSize: 52,
-    fontWeight: '800',
-  },
-  soberTime: {
-    color: APP_COLORS.text,
-    fontSize: 28,
-    fontWeight: '700',
-  },
-  statLabel: {
-    color: APP_COLORS.textSecondary,
-    fontSize: 14,
-    marginTop: 2,
+    marginBottom: SPACING.lg,
   },
   quickRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: SPACING.lg,
   },
+  quickSlotWrap: { flex: 1, marginHorizontal: SPACING.xs },
   quickSlot: {
-    flex: 1,
-    backgroundColor: APP_COLORS.surface,
-    borderRadius: 12,
+    backgroundColor: withAlpha(APP_COLORS.surface, 0.85),
+    borderRadius: RADII.md,
     borderWidth: 1,
     borderColor: APP_COLORS.border,
-    paddingVertical: 16,
-    paddingHorizontal: 8,
-    marginHorizontal: 4,
+    paddingVertical: SPACING.lg,
+    paddingHorizontal: SPACING.sm,
     alignItems: 'center',
-    minHeight: 60,
+    minHeight: 64,
     justifyContent: 'center',
   },
   quickSlotEmpty: {
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
   quickSlotText: {
     color: APP_COLORS.text,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     textAlign: 'center',
   },
   quickSlotTextEmpty: {
@@ -252,34 +252,25 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   logButton: {
-    backgroundColor: APP_COLORS.accent,
-    borderRadius: 14,
-    paddingVertical: 18,
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  logButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '800',
+    marginBottom: SPACING.xxl,
   },
   sectionHeader: {
+    ...TYPE.label,
     color: APP_COLORS.textSecondary,
-    fontSize: 13,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 10,
+    marginBottom: SPACING.md,
   },
   emptyText: {
     color: APP_COLORS.textSecondary,
     fontSize: 15,
-    marginBottom: 16,
+    marginBottom: SPACING.lg,
   },
   drinkRow: {
-    backgroundColor: APP_COLORS.surface,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
+    backgroundColor: withAlpha(APP_COLORS.surface, 0.85),
+    borderRadius: RADII.md,
+    borderWidth: 1,
+    borderColor: APP_COLORS.border,
+    padding: SPACING.lg,
+    marginBottom: SPACING.md,
   },
   drinkRowDecayed: {
     opacity: 0.4,
@@ -287,14 +278,14 @@ const styles = StyleSheet.create({
   drinkRowTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   drinkName: {
     color: APP_COLORS.text,
     fontSize: 16,
     fontWeight: '600',
     flex: 1,
-    marginRight: 8,
+    marginRight: SPACING.sm,
   },
   drinkRemaining: {
     color: APP_COLORS.textSecondary,
@@ -304,7 +295,7 @@ const styles = StyleSheet.create({
   progressTrack: {
     height: 8,
     borderRadius: 4,
-    backgroundColor: APP_COLORS.background,
+    backgroundColor: withAlpha('#000000', 0.35),
     overflow: 'hidden',
   },
   progressFill: {
@@ -312,23 +303,13 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   restartButton: {
-    marginTop: 16,
-    borderWidth: 1,
-    borderColor: APP_COLORS.danger,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  restartText: {
-    color: APP_COLORS.danger,
-    fontSize: 16,
-    fontWeight: '700',
+    marginTop: SPACING.lg,
   },
   disclaimer: {
     color: APP_COLORS.textSecondary,
     fontSize: 12,
     textAlign: 'center',
-    marginTop: 28,
+    marginTop: SPACING.xxl,
     lineHeight: 18,
   },
 });

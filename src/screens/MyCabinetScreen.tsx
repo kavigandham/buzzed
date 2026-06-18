@@ -3,7 +3,7 @@
 // modal with serving override; star = toggle favorite (persisted via context).
 
 import { useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
@@ -11,7 +11,12 @@ import { format } from 'date-fns';
 import { useDrink } from '../contexts/DrinkContext';
 import { CabinetEntry } from '../types';
 import { APP_COLORS, CATEGORY_COLORS } from '../constants/colors';
+import { RADII, SPACING, withAlpha } from '../constants/theme';
 import DrinkDetailModal, { DetailDrink } from '../components/DrinkDetailModal';
+import AnimatedGradientBackground from '../components/ui/AnimatedGradientBackground';
+import ScreenHeader from '../components/ui/ScreenHeader';
+import Pill from '../components/ui/Pill';
+import PressableScale from '../components/ui/PressableScale';
 
 type SortMode = 'favorites' | 'most' | 'recent' | 'az';
 
@@ -57,117 +62,107 @@ export default function MyCabinetScreen() {
     });
 
   const renderItem = ({ item }: { item: CabinetEntry }) => (
-    <TouchableOpacity
-      style={styles.card}
+    <PressableScale
       onPress={() => logDrink(item.drinkId)}
       onLongPress={() => openDetail(item)}
+      style={styles.cardWrap}
     >
-      <View style={[styles.dot, { backgroundColor: CATEGORY_COLORS[item.category] }]} />
-      <View style={styles.cardBody}>
-        <Text style={styles.cardName} numberOfLines={1}>
-          {item.name}
-        </Text>
-        <Text style={styles.cardMeta}>
-          {(item.abv * 100).toFixed(1)}% · ×{item.totalCount}
-          {item.lastConsumed > 0 ? ` · ${format(new Date(item.lastConsumed), 'MMM d')}` : ''}
-        </Text>
+      <View style={styles.card}>
+        <View style={[styles.dot, { backgroundColor: CATEGORY_COLORS[item.category] }]} />
+        <View style={styles.cardBody}>
+          <Text style={styles.cardName} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <Text style={styles.cardMeta}>
+            {(item.abv * 100).toFixed(1)}% · ×{item.totalCount}
+            {item.lastConsumed > 0 ? ` · ${format(new Date(item.lastConsumed), 'MMM d')}` : ''}
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={styles.star}
+          onPress={() => toggleFavorite(item.drinkId)}
+          hitSlop={10}
+        >
+          <Ionicons
+            name={item.favorite ? 'star' : 'star-outline'}
+            size={24}
+            color={item.favorite ? '#E6B800' : APP_COLORS.textSecondary}
+          />
+        </TouchableOpacity>
       </View>
-      <TouchableOpacity
-        style={styles.star}
-        onPress={() => toggleFavorite(item.drinkId)}
-        hitSlop={10}
-      >
-        <Ionicons
-          name={item.favorite ? 'star' : 'star-outline'}
-          size={24}
-          color={item.favorite ? '#E6B800' : APP_COLORS.textSecondary}
-        />
-      </TouchableOpacity>
-    </TouchableOpacity>
+    </PressableScale>
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <Text style={styles.title}>Cabinet</Text>
+    <AnimatedGradientBackground>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        <ScreenHeader title="Cabinet" />
 
-      {cabinet.length === 0 ? (
-        <View style={styles.emptyWrap}>
-          <Text style={styles.empty}>
-            No drinks logged yet. Start by logging your first drink!
-          </Text>
-        </View>
-      ) : (
-        <>
-          <Text style={styles.count}>
-            {cabinet.length} {cabinet.length === 1 ? 'drink' : 'drinks'} in your cabinet
-          </Text>
-
-          {/* Sort selector (segmented control) */}
-          <View style={styles.segment}>
-            {SORTS.map((s) => {
-              const active = s.key === sortMode;
-              return (
-                <TouchableOpacity
-                  key={s.key}
-                  style={[styles.segmentItem, active && styles.segmentItemActive]}
-                  onPress={() => setSortMode(s.key)}
-                >
-                  <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
-                    {s.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+        {cabinet.length === 0 ? (
+          <View style={styles.emptyWrap}>
+            <Text style={styles.empty}>
+              No drinks logged yet. Start by logging your first drink!
+            </Text>
           </View>
+        ) : (
+          <>
+            <Text style={styles.count}>
+              {cabinet.length} {cabinet.length === 1 ? 'drink' : 'drinks'} in your cabinet
+            </Text>
 
-          <FlatList
-            data={sorted}
-            keyExtractor={(item) => item.drinkId}
-            renderItem={renderItem}
-            style={styles.list}
-            contentContainerStyle={styles.listContent}
-          />
-        </>
-      )}
+            {/* Sort selector */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.segmentScroll}
+              contentContainerStyle={styles.segment}
+            >
+              {SORTS.map((s) => (
+                <Pill
+                  key={s.key}
+                  label={s.label}
+                  active={s.key === sortMode}
+                  onPress={() => setSortMode(s.key)}
+                  style={styles.segmentSpacing}
+                />
+              ))}
+            </ScrollView>
 
-      <DrinkDetailModal drink={detail} onClose={() => setDetail(null)} onLog={logDrink} />
-    </SafeAreaView>
+            <FlatList
+              data={sorted}
+              keyExtractor={(item) => item.drinkId}
+              renderItem={renderItem}
+              style={styles.list}
+              contentContainerStyle={styles.listContent}
+            />
+          </>
+        )}
+
+        <DrinkDetailModal drink={detail} onClose={() => setDetail(null)} onLog={logDrink} />
+      </SafeAreaView>
+    </AnimatedGradientBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: APP_COLORS.background, paddingHorizontal: 16 },
-  title: { color: APP_COLORS.text, fontSize: 28, fontWeight: '800', marginTop: 8, marginBottom: 12 },
-  count: { color: APP_COLORS.textSecondary, fontSize: 14, marginBottom: 12 },
-  emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
+  container: { flex: 1, paddingHorizontal: SPACING.lg },
+  count: { color: APP_COLORS.textSecondary, fontSize: 14, marginBottom: SPACING.md },
+  emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: SPACING.xxl },
   empty: { color: APP_COLORS.textSecondary, fontSize: 16, textAlign: 'center', lineHeight: 24 },
-  segment: {
-    flexDirection: 'row',
-    backgroundColor: APP_COLORS.surface,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: APP_COLORS.border,
-    padding: 4,
-    marginBottom: 12,
-  },
-  segmentItem: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  segmentItemActive: { backgroundColor: APP_COLORS.accent },
-  segmentText: { color: APP_COLORS.textSecondary, fontSize: 12, fontWeight: '600' },
-  segmentTextActive: { color: '#FFFFFF' },
+  segmentScroll: { flexGrow: 0, marginBottom: SPACING.md },
+  segment: { flexDirection: 'row', paddingRight: SPACING.sm },
+  segmentSpacing: { marginRight: SPACING.sm },
   list: { flex: 1 },
-  listContent: { paddingBottom: 12 },
+  listContent: { paddingBottom: SPACING.md },
+  cardWrap: { marginBottom: SPACING.sm },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: APP_COLORS.surface,
-    borderRadius: 12,
+    backgroundColor: withAlpha(APP_COLORS.surface, 0.85),
+    borderRadius: RADII.md,
+    borderWidth: 1,
+    borderColor: APP_COLORS.border,
     padding: 14,
-    marginBottom: 8,
   },
   dot: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
   cardBody: { flex: 1 },

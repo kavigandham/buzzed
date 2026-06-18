@@ -27,13 +27,15 @@ export const CATEGORY_COLORS: Record<DrinkCategory, string> = {
   other: '#888780',
 };
 
-// Dark / nightlife aesthetic.
+// Warm tan / sand / brown aesthetic (earthy, premium). NOTE: only the app
+// "chrome" lives here — LEVEL_COLORS / CATEGORY_COLORS above stay colorblind-safe.
 export const APP_COLORS = {
-  background: '#0F1115',
-  surface: '#1A1D23',
-  text: '#F2F3F5',
-  textSecondary: '#9BA0A8',
-  accent: '#378ADD',
-  danger: '#D4537E',
-  border: '#2A2E36',
+  background: '#1A140E', // deep warm espresso
+  surface: '#2A2018', // warm taupe-brown
+  text: '#F5EDE0', // warm cream
+  textSecondary: '#B8A88F', // muted sand
+  accent: '#C9A05C', // bronze / amber
+  onAccent: '#241A10', // dark text on the bronze accent (better contrast than white)
+  danger: '#C45B45', // warm-leaning red
+  border: '#3A2E22', // warm dark border
 };
