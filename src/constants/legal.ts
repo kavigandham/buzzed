@@ -37,7 +37,7 @@ export interface LegalDocument {
 // Placeholders — FILL THESE IN before App Store / Play submission.
 // ---------------------------------------------------------------------------
 export const LEGAL_INFO = {
-  developerName: '[DEVELOPER NAME]',
+  developerName: 'Kavi Gandham',
   contactEmail: '[CONTACT EMAIL]',
   effectiveDate: '[EFFECTIVE DATE]',
   mailingAddress: '[MAILING ADDRESS]',
